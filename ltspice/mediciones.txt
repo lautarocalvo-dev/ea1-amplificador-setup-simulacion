@@ -1,0 +1,165 @@
+; =========================================================
+; PARÁMETROS GLOBALES
+; =========================================================
+.param Vsupply=15
+.param Rload=8.2
+.param frec=5k
+.param Vin=10m 
+; Nota para simulacion .TRAN: comentar la línea de arriba y usar el .step de abajo
+ 
+ 
+; =========================================================
+;  POLARIZACIÓN (.OP)
+; =========================================================
+;.op  
+ 
+; Q1 (Darlington Entrada)
+.meas OP VB_Q1 PARAM V(VB1)
+.meas OP VC_Q1 PARAM V(VCC)
+.meas OP VE_Q1 PARAM V(VE1)
+.meas OP IC_Q1 PARAM Ic(Q1)
+ 
+; Q2 (Darlington Salida)
+.meas OP VB_Q2 PARAM V(VE1)
+.meas OP VC_Q2 PARAM V(VCC)
+.meas OP VE_Q2 PARAM V(VE2)
+.meas OP IC_Q2 PARAM Ic(Q2)
+ 
+; Q3 (Emisor Común)
+.meas OP VB_Q3 PARAM V(VB3)
+.meas OP VC_Q3 PARAM V(VC3)
+.meas OP VE_Q3 PARAM V(VE3)
+.meas OP IC_Q3 PARAM Ic(Q3)
+ 
+; =========================================================
+;  POTENCIAS (.OP)
+; =========================================================
+; --- ETAPA 1: Darlington (Q1, Q2) ---
+.meas OP P_RBin1 PARAM (V(VCC)-V(VB1))*I(RBin1)
+.meas OP P_RBin2 PARAM V(VB1)*I(RBin2)
+.meas OP P_REin  PARAM V(VE2)*I(REin)
+.meas OP P_Q1    PARAM (V(VCC)-V(VE1))*Ic(Q1)
+.meas OP P_Q2    PARAM (V(VCC)-V(VE2))*Ic(Q2)
+ 
+; --- ETAPA 2: Emisor Común (Q3) ---
+.meas OP P_RB1   PARAM (V(VCC)-V(VB3))*I(RB1)
+.meas OP P_RB2   PARAM V(VB3)*I(RB2)
+.meas OP P_RC    PARAM (V(VCC)-V(VC3))*I(RC1)
+.meas OP P_RE1   PARAM (V(VE3)-V(Vre2))*I(RE1)
+.meas OP P_RE2   PARAM V(Vre2)*I(RE2)
+.meas OP P_Q3    PARAM (V(VC3)-V(VE3))*Ic(Q3)
+ 
+; --- ETAPA 3: Etapa de Salida MOSFET (M1) ---
+.meas OP P_RB14  PARAM (V(VCC)-V(VG1))*I(RB14)
+.meas OP P_RB24  PARAM V(VG1)*I(RB24)
+.meas OP P_RE4   PARAM V(VS1)*I(RE4)
+.meas OP P_M1    PARAM (V(VCC)-V(VS1))*Id(M1)
+ 
+; --- CONSUMO TOTAL DE CONTINUA ---
+.meas OP I_Fuente PARAM Ic(Q1)+Ic(Q2)+Ic(Q3)+Id(M1)+I(RBin1)+I(RB1)+I(RB14)
+.meas OP P_Total  PARAM Vsupply*I_Fuente
+ 
+ 
+ 
+; =========================================================
+; ANÁLISIS DE RESPUESTA EN FRECUENCIA (.AC) 
+; (Descomentar .ac para evaluar estas mediciones)
+; =========================================================
+; Realiza un barrido desde 1 Hz hasta 100 MHz con 100 puntos por década
+;.ac dec 100 1 100Meg
+ 
+; Impedancias de Entrada (a 2 kHz)
+.meas AC Zin_T FIND mag(V(VIN)/I(VIN)) AT 2k
+.meas AC Zin_1 FIND mag(V(VB1)/Ib(Q1)) AT 2k
+.meas AC Zin_2 FIND mag(V(VB3)/Ib(Q3)) AT 2k
+; (Las Zout deben medirse alterando el circuito, apagando VIN y conectando I_test)
+ 
+ 
+; Ganancia vs Frecuencia
+.meas AC Av_1Hz FIND mag(V(VOUT)/V(VIN)) AT 1
+.meas AC Av_2Hz FIND mag(V(VOUT)/V(VIN)) AT 2
+.meas AC Av_5Hz FIND mag(V(VOUT)/V(VIN)) AT 5
+.meas AC Av_8Hz FIND mag(V(VOUT)/V(VIN)) AT 8
+.meas AC Av_10Hz FIND mag(V(VOUT)/V(VIN)) AT 10
+.meas AC Av_1MHz FIND mag(V(VOUT)/V(VIN)) AT 1Meg
+ 
+; Frecuencias de Corte y Ancho de Banda
+.meas AC Av_mid MAX mag(V(VOUT)/V(VIN))
+.meas AC f_low WHEN mag(V(VOUT)/V(VIN))=(Av_mid-3) RISE=1
+.meas AC f_high WHEN mag(V(VOUT)/V(VIN))=(Av_mid-3) FALL=1
+.meas AC BW PARAM f_high-f_low
+ 
+ 
+; IMPEDANCIAS DE SALIDA (.AC)
+; Requisitos previa simulación:
+; 1. En VIN: poner AC Amplitude = 0 
+; 2. Conectar fuente de corriente ITEST (AC 1) en el nodo a medir
+; 3. Comentar todas las mediciones anteriores de simulacion AC
+; 4. Descomentar SOLO la medición donde esté conectada ITEST
+;.meas AC Zout_T FIND mag(V(VOUT)/I(ITEST)) AT 2k ; (Con ITEST en nodo VOUT)
+;.meas AC Zout_1 FIND mag(V(VE2)/I(ITEST)) AT 2k    ; (Con ITEST en nodo VE2)
+;.meas AC Zout_2 FIND mag(V(VC3)/I(ITEST)) AT 2k    ; (Con ITEST en nodo VC3)
+ 
+ 
+; =========================================================
+; --- ANÁLISIS TRANSITORIO Y THD ---
+;(Para estas mediciones, f = 5 kHz en la fuente VIN)
+; =========================================================
+ 
+;.tran 0 5m 0 100n
+.options plotwinsize=0 numdgt=7
+.four 5k V(VOUT)
+ 
+;Barrido para rellenar Tablas(se debe desocmentar la linea de abajo)
+;.step param Vin LIST 1m 2m 5m 10m 20m 50m 100m 200m
+ 
+; Valores Pico a Pico y Ganancia (en régimen permanente)
+.meas TRAN Vout_pp PP V(VOUT) FROM 2m TO 5m
+.meas TRAN Vin_pp PP V(VIN) FROM 2m TO 5m
+.meas TRAN Av_tran PARAM Vout_pp/Vin_pp
+ 
+; 1. Potencia DC promedio entregada por la fuente VCC en Regimen Permanente
+.meas TRAN PDC AVG -V(VCC)*I(V1) FROM 2m TO 5m
+ 
+; 2. Potencia AC promedio entregada a la carga RL
+.meas TRAN PL AVG V(VOUT)*I(RL) FROM 2m TO 5m
+ 
+; 3. Rendimiento del amplificador (%)
+.meas TRAN Rendimiento PARAM (PL/PDC)*100
+ 
+ 
+ 
+ 
+; =========================================================
+;  ANÁLISIS DE RUIDO (PSD) 
+; =========================================================
+ 
+; 1. Ruido Etapa 1 (Darlington)
+;.noise V(VE2) VIN dec 50 10 100k
+ 
+ 
+; 2. Ruido Etapa 2 (Emisor Común)
+;.noise V(VC3) VIN dec 50 10 100k
+ 
+ 
+; 3. Ruido Amplificador Completo (Etapa 3 / Carga)
+;.noise V(VOUT) VIN dec 50 10 100k
+ 
+ 
+;4. Mediciones de Ruido a la salida y a la entrada
+.meas NOISE ruido_salida_rms INTEG V(onoise)
+.meas NOISE ruido_entrada_rms INTEG V(inoise)
+ 
+; =========================================================
+; --- BARRIDOS PARAMÉTRICOS (.STEP) ---
+;(Para Analisis de Estabilidad y Robustes del Amplificador)
+; =========================================================
+ 
+; 1. Sensibilidad a la Carga
+;.step param Rload LIST 4 8.2 16
+ 
+; 2. Sensibilidad a la Alimentación
+;.step param Vsupply LIST  12 15 18
+ 
+; 3. Sensibilidad a la Temperatura
+;.step temp LIST 25 50 75

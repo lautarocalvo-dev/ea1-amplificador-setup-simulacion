@@ -1,0 +1,14 @@
+# Archivos binarios y temporales pesados de LTspice
+*.raw
+*.op.raw
+*.log.raw
+*.db
+*.net
+*.bak
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Archivos temporales de Excel al estar abiertos
+~$*.xlsx
