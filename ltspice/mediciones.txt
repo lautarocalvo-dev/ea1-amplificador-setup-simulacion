@@ -4,8 +4,8 @@
 .param Vsupply=15
 .param Rload=8.2
 .param frec=5k
-.param Vin=10m 
-; Nota para simulacion .TRAN: comentar la línea de arriba y usar el .step de abajo
+.param Vin=15m 
+
  
  
 ; =========================================================
@@ -17,19 +17,25 @@
 .meas OP VB_Q1 PARAM V(VB1)
 .meas OP VC_Q1 PARAM V(VCC)
 .meas OP VE_Q1 PARAM V(VE1)
-.meas OP IC_Q1 PARAM Ic(Q1)
+.meas OP IC_Q1 PARAM Ic(Q1)*1k
  
 ; Q2 (Darlington Salida)
 .meas OP VB_Q2 PARAM V(VE1)
 .meas OP VC_Q2 PARAM V(VCC)
 .meas OP VE_Q2 PARAM V(VE2)
-.meas OP IC_Q2 PARAM Ic(Q2)
+.meas OP IC_Q2 PARAM Ic(Q2)*1k
  
 ; Q3 (Emisor Común)
 .meas OP VB_Q3 PARAM V(VB3)
 .meas OP VC_Q3 PARAM V(VC3)
 .meas OP VE_Q3 PARAM V(VE3)
-.meas OP IC_Q3 PARAM Ic(Q3)
+.meas OP IC_Q3 PARAM Ic(Q3)*1k
+ 
+; M1 (Salida MOSFE)
+.meas OP VG_M1 PARAM V(VG1)
+.meas OP VD_M1 PARAM V(VCC)
+.meas OP VS_M1 PARAM V(VS1)
+.meas OP ID_M1 PARAM Id(M1)
  
 ; =========================================================
 ;  POTENCIAS (.OP)
@@ -55,6 +61,9 @@
 .meas OP P_RE4   PARAM V(VS1)*I(RE4)
 .meas OP P_M1    PARAM (V(VCC)-V(VS1))*Id(M1)
  
+;--- Potencia de Rload(=0 porque esta desconectada por el capacitor)
+.meas OP P_RL PARAM (V(VOUT))*I(RL)
+ 
 ; --- CONSUMO TOTAL DE CONTINUA ---
 .meas OP I_Fuente PARAM Ic(Q1)+Ic(Q2)+Ic(Q3)+Id(M1)+I(RBin1)+I(RB1)+I(RB14)
 .meas OP P_Total  PARAM Vsupply*I_Fuente
@@ -70,8 +79,8 @@
  
 ; Impedancias de Entrada (a 2 kHz)
 .meas AC Zin_T FIND mag(V(VIN)/I(VIN)) AT 2k
-.meas AC Zin_1 FIND mag(V(VB1)/Ib(Q1)) AT 2k
-.meas AC Zin_2 FIND mag(V(VB3)/Ib(Q3)) AT 2k
+.meas AC Zin_2 FIND mag(V(VB3)/I(Cc1)) AT 2k
+.meas AC Zin_3 FIND mag(V(VG1)/I(Cc2)) AT 2k
 ; (Las Zout deben medirse alterando el circuito, apagando VIN y conectando I_test)
  
  
@@ -81,12 +90,14 @@
 .meas AC Av_5Hz FIND mag(V(VOUT)/V(VIN)) AT 5
 .meas AC Av_8Hz FIND mag(V(VOUT)/V(VIN)) AT 8
 .meas AC Av_10Hz FIND mag(V(VOUT)/V(VIN)) AT 10
+.meas AC Av_2KHz FIND mag(V(VOUT)/V(VIN)) AT 2k
+.meas AC Av_10KHz FIND mag(V(VOUT)/V(VIN)) AT 10k
 .meas AC Av_1MHz FIND mag(V(VOUT)/V(VIN)) AT 1Meg
  
 ; Frecuencias de Corte y Ancho de Banda
 .meas AC Av_mid MAX mag(V(VOUT)/V(VIN))
-.meas AC f_low WHEN mag(V(VOUT)/V(VIN))=(Av_mid-3) RISE=1
-.meas AC f_high WHEN mag(V(VOUT)/V(VIN))=(Av_mid-3) FALL=1
+.meas AC f_low WHEN mag(V(VOUT)/V(VIN))=(Av_mid*0.707) RISE=1
+.meas AC f_high WHEN mag(V(VOUT)/V(VIN))=(Av_mid*0.707) FALL=1
 .meas AC BW PARAM f_high-f_low
  
  
@@ -108,10 +119,11 @@
  
 ;.tran 0 5m 0 100n
 .options plotwinsize=0 numdgt=7
-.four 5k V(VOUT)
+.four 5k V(VE2) V(VC3) V(VOUT)
  
 ;Barrido para rellenar Tablas(se debe desocmentar la linea de abajo)
-;.step param Vin LIST 1m 2m 5m 10m 20m 50m 100m 200m
+;.step param Vin LIST   2.5m 5m 10m 25m 50m 100m
+;.step param Vin LIST   17m 19.5m  98.2m
  
 ; Valores Pico a Pico y Ganancia (en régimen permanente)
 .meas TRAN Vout_pp PP V(VOUT) FROM 2m TO 5m
@@ -156,10 +168,12 @@
 ; =========================================================
  
 ; 1. Sensibilidad a la Carga
-;.step param Rload LIST 4 8.2 16
+;.step param Rload LIST  0.5  5.77 8.2
+;.step param Rload LIST  6  8,2 15
  
 ; 2. Sensibilidad a la Alimentación
-;.step param Vsupply LIST  12 15 18
+;.step param Vsupply LIST  1.667 11.07 14.15
+;.step param Vsupply LIST 12 15 18
  
 ; 3. Sensibilidad a la Temperatura
 ;.step temp LIST 25 50 75
